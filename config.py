@@ -1,0 +1,33 @@
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parent
+ASSET_DIR = PROJECT_ROOT / "assets"
+TEXTURE_DIR = ASSET_DIR / "textures"
+SETTINGS_FILE = PROJECT_ROOT / "settings.json"
+
+# World
+WORLD_SIZE = 200
+WORLD_HALF = WORLD_SIZE // 2
+CHUNK_SIZE = 16
+WATER_LEVEL = 2
+MAX_TERRAIN_HEIGHT = 6
+TREE_CHANCE = 0.012
+
+# Player
+PLAYER_HEIGHT = 1.62
+PLAYER_WALK_SPEED = 5.0
+PLAYER_SPRINT_SPEED = 7.5
+PLAYER_GRAVITY = 1.0
+PLAYER_JUMP_HEIGHT = 1.5
+THIRD_PERSON_DISTANCE = 4.0
+REACH_DISTANCE = 5.0
+
+# Maths
+DIFFICULTIES = ("easy", "medium", "hard")
+DIFFICULTY_REWARDS = {
+    "easy": 1,
+    "medium": 5,
+    "hard": 10,
+}
+
+STARTING_TOKENS = 5
