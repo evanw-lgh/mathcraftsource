@@ -1131,6 +1131,181 @@ class MathcraftPlayer(FirstPersonController):
     def jump(self) -> None:
         super().jump()
 
+    # =========================================================
+    # JOYSTICK / CONTROLLER INPUT
+    # =========================================================
+
+    def _inject_left_stick_into_movement(
+        self,
+    ):
+        """
+        FirstPersonController already knows how to perform movement,
+        gravity and collision using WASD.
+
+        For a controller, temporarily map the left analog stick onto those
+        four movement values while super().update() runs, then restore the
+        real keyboard values immediately afterwards.
+        """
+        joysticks = getattr(
+            self.game.ui,
+            "joysticks",
+            None,
+        )
+
+        if joysticks is None:
+            return None
+
+        move = (
+            joysticks
+            .gamepad_move_vector()
+        )
+
+        if (
+            abs(
+                move.x
+            ) < 0.001
+            and abs(
+                move.y
+            ) < 0.001
+        ):
+            return None
+
+        original = {
+            "w":
+                held_keys[
+                    "w"
+                ],
+
+            "a":
+                held_keys[
+                    "a"
+                ],
+
+            "s":
+                held_keys[
+                    "s"
+                ],
+
+            "d":
+                held_keys[
+                    "d"
+                ],
+        }
+
+        held_keys[
+            "d"
+        ] = max(
+            original[
+                "d"
+            ],
+            max(
+                0.0,
+                move.x,
+            ),
+        )
+
+        held_keys[
+            "a"
+        ] = max(
+            original[
+                "a"
+            ],
+            max(
+                0.0,
+                -move.x,
+            ),
+        )
+
+        held_keys[
+            "w"
+        ] = max(
+            original[
+                "w"
+            ],
+            max(
+                0.0,
+                move.y,
+            ),
+        )
+
+        held_keys[
+            "s"
+        ] = max(
+            original[
+                "s"
+            ],
+            max(
+                0.0,
+                -move.y,
+            ),
+        )
+
+        return original
+
+    @staticmethod
+    def _restore_movement_keys(
+        original,
+    ) -> None:
+        if original is None:
+            return
+
+        for key, value in (
+            original.items()
+        ):
+            held_keys[
+                key
+            ] = value
+
+    def _update_right_stick_look(
+        self,
+    ) -> None:
+        joysticks = getattr(
+            self.game.ui,
+            "joysticks",
+            None,
+        )
+
+        if joysticks is None:
+            return
+
+        look = (
+            joysticks
+            .look_control_vector()
+        )
+
+        if (
+            abs(
+                look.x
+            ) < 0.001
+            and abs(
+                look.y
+            ) < 0.001
+        ):
+            return
+
+        horizontal_speed = 125.0
+        vertical_speed = 95.0
+
+        self.rotation_y += (
+            look.x
+            * horizontal_speed
+            * time.dt
+        )
+
+        self.camera_pivot.rotation_x -= (
+            look.y
+            * vertical_speed
+            * time.dt
+        )
+
+        self.camera_pivot.rotation_x = max(
+            -90.0,
+            min(
+                90.0,
+                self.camera_pivot.rotation_x,
+            ),
+        )
+
     def update(self) -> None:
         if not self.enabled:
             return
@@ -1162,7 +1337,19 @@ class MathcraftPlayer(FirstPersonController):
                 self.base_gravity
             )
 
-        super().update()
+        movement_keys = (
+            self._inject_left_stick_into_movement()
+        )
+
+        try:
+            super().update()
+
+        finally:
+            self._restore_movement_keys(
+                movement_keys
+            )
+
+        self._update_right_stick_look()
 
         if self.fly_mode:
             self.grounded = False
