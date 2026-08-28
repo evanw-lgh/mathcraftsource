@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mathcraft — Equation Valley</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main id="game">
+      <div id="scene"></div>
+      <div id="crosshair" aria-hidden="true">+</div>
+      <aside id="hud">
+        <b>MATH<span>CRAFT</span></b>
+        <p>Tokens: <strong id="tokens">0</strong></p>
+        <p>Selected: <strong id="selected">grass</strong> | Count: <strong id="count">2</strong></p>
+        <p>Maths: <strong id="difficulty-label">EASY</strong></p>
+        <p class="quest">Quest: The First Equation</p>
+      </aside>
+      <button id="fullscreen">⛶ FULLSCREEN</button>
+      <button id="signout">SIGN OUT</button>
+      <div id="health">♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥ ♥</div>
+      <p id="notice">Click to enter the world.</p>
+      <nav id="hotbar" aria-label="Inventory"></nav>
+      <p id="instructions">WASD move · Mouse look · Shift sprint · Space jump · LMB mine · RMB place · Q maths · Esc menu</p>
+      <div id="mobile-controls" hidden>
+        <div id="move-stick">
+          <button data-key="w">▲</button><button data-key="a">◀</button><button data-key="s">▼</button><button data-key="d">▶</button>
+        </div>
+        <div id="look-stick">LOOK</div>
+        <button id="jump">JUMP</button>
+      </div>
+      <div id="overlay" hidden>
+        <section id="math-panel" class="panel" hidden>
+          <button class="close" type="button">×</button><p id="math-title">EASY KNOWLEDGE CHALLENGE</p>
+          <h1 id="question"></h1><small id="reward"></small>
+          <form id="math-form"><input id="answer" inputmode="numeric" placeholder="Answer" autofocus /><button>CHECK ANSWER</button></form>
+        </section>
+        <section id="menu-panel" class="panel" hidden>
+          <p>GAME MENU</p><h1>Mathcraft</h1>
+          <button id="resume">RESUME</button><button id="fullscreen-menu">ENTER FULLSCREEN</button>
+          <label>Maths difficulty<select id="difficulty"><option value="easy">Easy · +1 tokens</option><option value="medium">Medium · +5 tokens</option><option value="hard">Hard · +10 tokens</option></select></label>
+          <button id="math-menu">MATHS CHALLENGE</button><button id="signout-menu" class="danger">SIGN OUT</button><small>Esc opens this menu</small>
+        </section>
+        <section id="signedout-panel" class="panel" hidden><p>SESSION ENDED</p><h1>Signed out</h1><small>Your local play session has ended.</small><button id="restart">START NEW SESSION</button></section>
+      </div>
+    </main>
+    <script type="module" src="script.js"></script>
+  </body>
+</html>
