@@ -79,6 +79,8 @@ class MathcraftGame:
             title="Mathcraft",
             borderless=False,
             editor_ui_enabled=False,
+            development_mode=False
+            
         )
 
         window.color = color.rgb32(115, 180, 235)
