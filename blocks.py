@@ -10,6 +10,9 @@ class BlockType(str, Enum):
     WATER = "WATER"
     LAVA = "LAVA"
     OBSIDIAN = "OBSIDIAN"
+    END_STONE = "END_STONE"
+    END_PORTAL_FRAME = "END_PORTAL_FRAME"
+    END_PORTAL_FRAME_ACTIVE = "END_PORTAL_FRAME_ACTIVE"
     OAK_PLANKS = "OAK_PLANKS"
     GLASS = "GLASS"
     OAK_STAIRS = "OAK_STAIRS"
@@ -74,6 +77,33 @@ BLOCKS = {
         breakable=True,
     ),
 
+    BlockType.END_STONE: BlockDefinition(
+        BlockType.END_STONE,
+        "End Stone",
+        solid=True,
+        transparent=False,
+        liquid=False,
+        breakable=True,
+    ),
+
+    BlockType.END_PORTAL_FRAME: BlockDefinition(
+        BlockType.END_PORTAL_FRAME,
+        "End Portal Frame",
+        solid=True,
+        transparent=True,
+        liquid=False,
+        breakable=True,
+    ),
+
+    BlockType.END_PORTAL_FRAME_ACTIVE: BlockDefinition(
+        BlockType.END_PORTAL_FRAME_ACTIVE,
+        "Activated End Portal Frame",
+        solid=True,
+        transparent=True,
+        liquid=False,
+        breakable=True,
+    ),
+
     BlockType.OAK_PLANKS: BlockDefinition(
         BlockType.OAK_PLANKS,
         "Oak Planks",
@@ -98,6 +128,8 @@ PLACEABLE_BLOCKS = [
     BlockType.OAK_LOG,
     BlockType.OAK_LEAVES,
     BlockType.OBSIDIAN,
+    BlockType.END_STONE,
+    BlockType.END_PORTAL_FRAME,
     BlockType.OAK_PLANKS,
     BlockType.GLASS,
     BlockType.OAK_STAIRS,

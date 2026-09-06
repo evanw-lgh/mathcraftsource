@@ -1315,6 +1315,11 @@ class PeacefulMobManager(Entity):
             and self.game.player
             is not None
             and self.game.player.enabled
+            and getattr(
+                self.game,
+                "current_dimension",
+                "overworld",
+            ) != "end"
         )
 
     def _reset_spawn_timer(

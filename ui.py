@@ -11,7 +11,6 @@ from ursina import (
     InputField,
     Slider,
     Text,
-    Vec2,
     camera,
     color,
     destroy,
@@ -222,386 +221,6 @@ class InventorySpreadController(Entity):
         self.ui._collect_inventory_spread_target()
 
 
-class GameplayJoysticks(Entity):
-    """
-    Two always-visible gameplay joystick indicators.
-
-    LEFT:
-      - WASD
-      - physical controller left stick
-
-    RIGHT:
-      - mouse movement
-      - arrow keys
-      - physical controller right stick
-
-    Physical controller sticks are also fed back into the actual player
-    controls by player.py, so these are functional controls rather than
-    decorative indicators.
-    """
-
-    DEAD_ZONE = 0.12
-    KNOB_TRAVEL = 0.036
-
-    def __init__(
-        self,
-        game,
-    ):
-        super().__init__(
-            parent=camera.ui,
-            eternal=True,
-            enabled=False,
-        )
-
-        self.game = game
-
-        ui_dir = (
-            ASSET_DIR
-            / "ui"
-        )
-
-        base_path = (
-            ui_dir
-            / "joystick_base.png"
-        )
-
-        knob_path = (
-            ui_dir
-            / "joystick_knob.png"
-        )
-
-        self.base_texture = load_texture(
-            base_path.name,
-            folder=base_path.parent,
-        )
-
-        self.knob_texture = load_texture(
-            knob_path.name,
-            folder=knob_path.parent,
-        )
-
-        for texture in (
-            self.base_texture,
-            self.knob_texture,
-        ):
-            if texture is not None:
-                texture.filtering = (
-                    "nearest"
-                )
-                texture.repeat = False
-
-        self.left_origin = Vec2(
-            -0.66,
-            -0.34,
-        )
-
-        self.right_origin = Vec2(
-            0.66,
-            -0.34,
-        )
-
-        self.left_base = Entity(
-            parent=self,
-            model="quad",
-            texture=self.base_texture,
-            position=(
-                self.left_origin.x,
-                self.left_origin.y,
-            ),
-            scale=(
-                0.135,
-                0.135,
-            ),
-            color=color.white,
-            z=-0.65,
-        )
-
-        self.right_base = Entity(
-            parent=self,
-            model="quad",
-            texture=self.base_texture,
-            position=(
-                self.right_origin.x,
-                self.right_origin.y,
-            ),
-            scale=(
-                0.135,
-                0.135,
-            ),
-            color=color.white,
-            z=-0.65,
-        )
-
-        self.left_knob = Entity(
-            parent=self,
-            model="quad",
-            texture=self.knob_texture,
-            position=(
-                self.left_origin.x,
-                self.left_origin.y,
-            ),
-            scale=(
-                0.066,
-                0.066,
-            ),
-            color=color.white,
-            z=-0.67,
-        )
-
-        self.right_knob = Entity(
-            parent=self,
-            model="quad",
-            texture=self.knob_texture,
-            position=(
-                self.right_origin.x,
-                self.right_origin.y,
-            ),
-            scale=(
-                0.066,
-                0.066,
-            ),
-            color=color.white,
-            z=-0.67,
-        )
-
-    # =========================================================
-    # INPUT HELPERS
-    # =========================================================
-
-    @staticmethod
-    def _held(
-        key: str,
-    ) -> float:
-        try:
-            return float(
-                held_keys[
-                    key
-                ]
-            )
-        except (
-            TypeError,
-            ValueError,
-            KeyError,
-        ):
-            return 0.0
-
-    @classmethod
-    def _apply_dead_zone(
-        cls,
-        value: float,
-    ) -> float:
-        if abs(
-            value
-        ) < cls.DEAD_ZONE:
-            return 0.0
-
-        return max(
-            -1.0,
-            min(
-                1.0,
-                value,
-            ),
-        )
-
-    @staticmethod
-    def _clamp_vector(
-        vector: Vec2,
-    ) -> Vec2:
-        length = (
-            vector.length()
-        )
-
-        if length > 1.0:
-            vector /= length
-
-        return vector
-
-    def gamepad_move_vector(
-        self,
-    ) -> Vec2:
-        x = self._held(
-            "gamepad left stick x"
-        )
-
-        y = self._held(
-            "gamepad left stick y"
-        )
-
-        # Some Panda/Ursina controller mappings report forward as
-        # negative Y. This normalizes forward to +Y for Mathcraft.
-        y = -y
-
-        return self._clamp_vector(
-            Vec2(
-                self._apply_dead_zone(
-                    x
-                ),
-                self._apply_dead_zone(
-                    y
-                ),
-            )
-        )
-
-    def movement_visual_vector(
-        self,
-    ) -> Vec2:
-        keyboard = Vec2(
-            self._held(
-                "d"
-            )
-            - self._held(
-                "a"
-            ),
-            self._held(
-                "w"
-            )
-            - self._held(
-                "s"
-            ),
-        )
-
-        vector = (
-            keyboard
-            + self.gamepad_move_vector()
-        )
-
-        return self._clamp_vector(
-            vector
-        )
-
-    def gamepad_look_vector(
-        self,
-    ) -> Vec2:
-        x = self._held(
-            "gamepad right stick x"
-        )
-
-        y = self._held(
-            "gamepad right stick y"
-        )
-
-        return self._clamp_vector(
-            Vec2(
-                self._apply_dead_zone(
-                    x
-                ),
-                self._apply_dead_zone(
-                    y
-                ),
-            )
-        )
-
-    def keyboard_look_vector(
-        self,
-    ) -> Vec2:
-        return self._clamp_vector(
-            Vec2(
-                self._held(
-                    "right arrow"
-                )
-                - self._held(
-                    "left arrow"
-                ),
-                self._held(
-                    "up arrow"
-                )
-                - self._held(
-                    "down arrow"
-                ),
-            )
-        )
-
-    def look_control_vector(
-        self,
-    ) -> Vec2:
-        return self._clamp_vector(
-            self.gamepad_look_vector()
-            + self.keyboard_look_vector()
-        )
-
-    def look_visual_vector(
-        self,
-    ) -> Vec2:
-        vector = (
-            self.look_control_vector()
-        )
-
-        if vector.length() > 0:
-            return vector
-
-        # Show ordinary mouse-look movement on the right joystick too.
-        try:
-            mouse_vector = Vec2(
-                float(
-                    mouse.velocity.x
-                ),
-                float(
-                    mouse.velocity.y
-                ),
-            )
-        except (
-            AttributeError,
-            TypeError,
-            ValueError,
-        ):
-            return Vec2(
-                0,
-                0,
-            )
-
-        mouse_vector *= 28.0
-
-        return self._clamp_vector(
-            mouse_vector
-        )
-
-    # =========================================================
-    # VISUALS
-    # =========================================================
-
-    def _set_knob(
-        self,
-        knob,
-        origin: Vec2,
-        vector: Vec2,
-    ) -> None:
-        knob.x = (
-            origin.x
-            + vector.x
-            * self.KNOB_TRAVEL
-        )
-
-        knob.y = (
-            origin.y
-            + vector.y
-            * self.KNOB_TRAVEL
-        )
-
-    def update(
-        self,
-    ) -> None:
-        # "Displayed all the time" while a world is loaded. This keeps the
-        # joysticks visible even when inventory, maths, or pause UI is open.
-        self.enabled = bool(
-            self.game.in_game
-        )
-
-        if not self.enabled:
-            return
-
-        self._set_knob(
-            self.left_knob,
-            self.left_origin,
-            self.movement_visual_vector(),
-        )
-
-        self._set_knob(
-            self.right_knob,
-            self.right_origin,
-            self.look_visual_vector(),
-        )
-
-
 class GameUI:
     def __init__(self, game):
         self.game = game
@@ -700,12 +319,6 @@ class GameUI:
         self.inventory_spread_controller = (
             InventorySpreadController(
                 self
-            )
-        )
-
-        self.joysticks = (
-            GameplayJoysticks(
-                self.game
             )
         )
 
@@ -1504,19 +1117,10 @@ class GameUI:
     # =========================================================
 
     def _build_hud(self):
-        self.time_text = Text(
-            parent=self.hud_root,
-            text="08:00",
-            x=-0.76,
-            y=0.47,
-            scale=1.00,
-            color=color.white,
-        )
-
         self.tokens_text = Text(
             parent=self.hud_root,
             x=-0.76,
-            y=0.42,
+            y=0.45,
             scale=1.10,
             color=color.white,
         )
@@ -1524,7 +1128,7 @@ class GameUI:
         self.block_text = Text(
             parent=self.hud_root,
             x=-0.76,
-            y=0.37,
+            y=0.40,
             scale=0.88,
             color=color.white,
         )
@@ -1532,7 +1136,7 @@ class GameUI:
         self.difficulty_text = Text(
             parent=self.hud_root,
             x=-0.76,
-            y=0.32,
+            y=0.35,
             scale=0.88,
             color=color.white,
         )
@@ -1540,7 +1144,7 @@ class GameUI:
         self.quest_text = Text(
             parent=self.hud_root,
             x=-0.76,
-            y=0.26,
+            y=0.29,
             scale=0.70,
             color=color.white,
         )
@@ -1548,9 +1152,9 @@ class GameUI:
         self.help_text = Text(
             parent=self.hud_root,
             text=(
-                "WASD / left stick move | Mouse / right stick look | "
-                "Arrows also look | Shift sprint | Space jump | "
-                "F5 camera | LMB mine | RMB place | Q maths | Esc menu"
+                "WASD move | Shift sprint | Space jump | "
+                "F5 camera | LMB mine | RMB place | "
+                "Wheel/1-7 block | Q maths | Esc menu"
             ),
             x=-0.76,
             y=-0.46,
@@ -1603,14 +1207,6 @@ class GameUI:
         self.current_question = None
 
         mouse.locked = False
-
-    def set_world_time(
-        self,
-        time_text: str,
-    ) -> None:
-        self.time_text.text = str(
-            time_text
-        )
 
     def update_hud(self):
         self.tokens_text.text = (
@@ -1849,6 +1445,12 @@ class GameUI:
                 SPECIAL_BLOCK_TEXTURES[
                     "OBSIDIAN"
                 ],
+            BlockType.END_STONE:
+                "end_stone.png",
+            BlockType.END_PORTAL_FRAME:
+                "end_portal_frame.png",
+            BlockType.END_PORTAL_FRAME_ACTIVE:
+                "end_portal_frame_active.png",
             BlockType.OAK_PLANKS:
                 "oak_planks.png",
             BlockType.GLASS:

@@ -37,6 +37,10 @@ ATLAS_TILES = {
     "leaves": (0, 1),
     "oak_planks": (1, 1),
     "glass": (2, 1),
+    "end_stone": (3, 1),
+
+    "end_portal_frame": (0, 0),
+    "end_portal_frame_active": (1, 0),
 }
 
 # Face order:
@@ -80,6 +84,18 @@ BLOCK_FACE_TILES = {
         "missing",
     ) * 6,
 
+    "END_STONE": (
+        "end_stone",
+    ) * 6,
+
+    "END_PORTAL_FRAME": (
+        "end_portal_frame",
+    ) * 6,
+
+    "END_PORTAL_FRAME_ACTIVE": (
+        "end_portal_frame_active",
+    ) * 6,
+
     "OAK_PLANKS": (
         "oak_planks",
     ) * 6,
@@ -115,6 +131,9 @@ BLOCK_TEXTURES = {
     "WATER": (SPECIAL_BLOCK_TEXTURES["WATER"],) * 6,
     "LAVA": (SPECIAL_BLOCK_TEXTURES["LAVA"],) * 6,
     "OBSIDIAN": (SPECIAL_BLOCK_TEXTURES["OBSIDIAN"],) * 6,
+    "END_STONE": ("end_stone.png",) * 6,
+    "END_PORTAL_FRAME": ("end_portal_frame.png",) * 6,
+    "END_PORTAL_FRAME_ACTIVE": ("end_portal_frame_active.png",) * 6,
     "OAK_PLANKS": ("oak_planks.png",) * 6,
     "GLASS": ("glass.png",) * 6,
     "OAK_STAIRS": ("oak_planks.png",) * 6,

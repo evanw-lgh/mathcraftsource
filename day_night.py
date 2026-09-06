@@ -6,9 +6,12 @@ from ursina import (
     Entity,
     Vec3,
     color,
+    load_texture,
     time,
     window,
 )
+
+from config import ASSET_DIR
 
 
 WORLD_DAY_MINUTES = 24 * 60
@@ -67,6 +70,24 @@ NETHER_SUN = (
     125,
     55,
     35,
+)
+
+END_SKY = (
+    2,
+    4,
+    8,
+)
+
+END_AMBIENT = (
+    105,
+    108,
+    125,
+)
+
+END_SUN = (
+    145,
+    145,
+    160,
 )
 
 
@@ -164,6 +185,28 @@ class DayNightCycle(Entity):
         )
 
         self._last_display_minute = None
+
+        end_sky_path = (
+            ASSET_DIR
+            / "textures"
+            / "end_sky.png"
+        )
+
+        self.end_sky_texture = None
+
+        if end_sky_path.exists():
+            self.end_sky_texture = (
+                load_texture(
+                    end_sky_path.name,
+                    folder=end_sky_path.parent,
+                )
+            )
+
+            if self.end_sky_texture is not None:
+                self.end_sky_texture.filtering = (
+                    "nearest"
+                )
+                self.end_sky_texture.repeat = False
 
     # =========================================================
     # WORLD SETUP / SAVE
@@ -388,14 +431,69 @@ class DayNightCycle(Entity):
     def apply_visuals(
         self,
     ) -> None:
-        if (
-            getattr(
-                self.game,
-                "current_dimension",
-                "overworld",
+        current_dimension = getattr(
+            self.game,
+            "current_dimension",
+            "overworld",
+        )
+
+        if current_dimension == "end":
+            sky_colour = color.rgb32(
+                *END_SKY
             )
-            == "nether"
-        ):
+
+            window.color = sky_colour
+
+            if self.game.sky is not None:
+                if self.end_sky_texture is not None:
+                    self.game.sky.texture = (
+                        self.end_sky_texture
+                    )
+
+                self.game.sky.color = color.white
+
+            if getattr(
+                self.game,
+                "ambient_light",
+                None,
+            ) is not None:
+                self.game.ambient_light.color = (
+                    color.rgba32(
+                        END_AMBIENT[0],
+                        END_AMBIENT[1],
+                        END_AMBIENT[2],
+                        255,
+                    )
+                )
+
+            if getattr(
+                self.game,
+                "sunlight",
+                None,
+            ) is not None:
+                self.game.sunlight.color = (
+                    color.rgba32(
+                        END_SUN[0],
+                        END_SUN[1],
+                        END_SUN[2],
+                        255,
+                    )
+                )
+
+            return
+
+        if self.game.sky is not None:
+            # Restore Ursina's normal sky when leaving The End.
+            if (
+                self.end_sky_texture is not None
+                and self.game.sky.texture
+                == self.end_sky_texture
+            ):
+                self.game.sky.texture = (
+                    "sky_default"
+                )
+
+        if current_dimension == "nether":
             sky_colour = color.rgb32(
                 *NETHER_SKY
             )

@@ -232,6 +232,28 @@ CRAFTING_RECIPES = (
 
         "count": 1,
     },
+
+    # End Portal Frame recipe:
+    #
+    #     obsidian   glass
+    #     glass      obsidian
+    #
+    # Three crafts produce the twelve frames needed for one portal.
+    {
+        "kind": "pattern",
+
+        "pattern": (
+            BlockType.OBSIDIAN,
+            BlockType.GLASS,
+            BlockType.GLASS,
+            BlockType.OBSIDIAN,
+        ),
+
+        "output":
+            BlockType.END_PORTAL_FRAME,
+
+        "count": 4,
+    },
 )
 
 
