@@ -2335,6 +2335,8 @@ class GameUI:
         if not self.inventory_spreading:
             return
 
+        # Capture the slot underneath the release position too. This matters
+        # when the mouse crosses a slot between two rendered update frames.
         self._collect_inventory_spread_target()
 
         targets = list(
@@ -2343,6 +2345,13 @@ class GameUI:
 
         self.inventory_spreading = False
         self.inventory_spread_targets = []
+
+        # One visited slot is simply a normal click. The Button.on_click
+        # handler has already handled it by the time this input event runs.
+        if len(
+            targets
+        ) < 2:
+            return
 
         if (
             self.game.inventory
@@ -2353,10 +2362,34 @@ class GameUI:
             self.update_inventory_screen()
             self.update_hud()
 
+    def _is_real_inventory_drag_spread(
+        self,
+    ) -> bool:
+        """
+        Return True once the held stack has crossed at least two slots.
+
+        Ursina fires Button.on_click on mouse-up before
+        InventorySpreadController receives "left mouse up". Without this
+        guard, the slot under the mouse performs a normal click/swap first,
+        changing the cursor stack before spreading happens.
+        """
+        return (
+            self.inventory_spreading
+            and len(
+                self.inventory_spread_targets
+            )
+            >= 2
+        )
+
     def _click_inventory_slot(
         self,
         index: int,
     ) -> None:
+        # A real drag spread owns this mouse release. Do not also perform
+        # the slot's normal click action.
+        if self._is_real_inventory_drag_spread():
+            return
+
         self.game.inventory.click_inventory_slot(
             index
         )
@@ -2368,6 +2401,10 @@ class GameUI:
         self,
         index: int,
     ) -> None:
+        # Same protection for the 2x2 crafting grid.
+        if self._is_real_inventory_drag_spread():
+            return
+
         self.game.inventory.click_crafting_slot(
             index
         )
