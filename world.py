@@ -51,6 +51,59 @@ LAVA_SAFE_SPAWN_RADIUS = 7
 LAVA_TEXTURE_FLOW_U = 0.018
 LAVA_TEXTURE_FLOW_V = 0.009
 
+# Floating End island generation.
+END_ISLAND_RADIUS = 28
+END_BASE_HEIGHT = 9
+END_SURFACE_WAVE = 2.0
+END_MIN_THICKNESS = 4
+END_EDGE_THICKNESS_SCALE = 0.40
+
+
+# =========================================================
+# NETHER TEXTURE TINT
+# =========================================================
+#
+# The Nether now uses the SAME textures and atlas as the Overworld.
+# These colours only tint those textures slightly red/brown instead
+# of replacing every texture with netherrack.
+#
+# Change these RGB values if you want the Nether tint stronger/weaker.
+#
+NETHER_BLOCK_TINT = color.rgba32(
+    255,
+    205,
+    205,
+    255,
+)
+
+NETHER_TRANSPARENT_TINT = color.rgba32(
+    255,
+    205,
+    205,
+    255,
+)
+
+NETHER_WATER_TINT = color.rgba32(
+    255,
+    190,
+    190,
+    205,
+)
+
+NETHER_LAVA_TINT = color.rgba32(
+    255,
+    205,
+    195,
+    235,
+)
+
+NETHER_OBSIDIAN_TINT = color.rgba32(
+    255,
+    195,
+    195,
+    255,
+)
+
 
 def apply_world_settings(settings) -> None:
     global CHUNK_SIZE
@@ -357,9 +410,17 @@ class World:
         initial_state=None,
         dimension: str = "overworld",
     ):
+        requested_dimension = str(
+            dimension
+        ).lower()
+
         self.dimension = (
-            "nether"
-            if str(dimension).lower() == "nether"
+            requested_dimension
+            if requested_dimension in (
+                "overworld",
+                "nether",
+                "end",
+            )
             else "overworld"
         )
         self.blocks: Dict[
@@ -389,6 +450,8 @@ class World:
 
         if initial_state:
             self.load_state(initial_state)
+        elif self.dimension == "end":
+            self.generate_end()
         else:
             self.generate()
 
@@ -459,9 +522,72 @@ class World:
             ),
         )
 
+    @staticmethod
+    def end_surface_height(
+        x: int,
+        z: int,
+    ) -> int | None:
+        distance = math.sqrt(
+            x * x
+            + z * z
+        )
+
+        if distance > END_ISLAND_RADIUS:
+            return None
+
+        edge_amount = max(
+            0.0,
+            min(
+                1.0,
+                (
+                    END_ISLAND_RADIUS
+                    - distance
+                )
+                / END_ISLAND_RADIUS,
+            ),
+        )
+
+        wave = (
+            math.sin(
+                x * 0.23
+            )
+            + math.cos(
+                z * 0.19
+            )
+            + math.sin(
+                (x + z)
+                * 0.11
+            )
+            * 0.65
+        )
+
+        return int(
+            round(
+                END_BASE_HEIGHT
+                + wave
+                * END_SURFACE_WAVE
+                * edge_amount
+            )
+        )
+
     def get_spawn_position(
         self,
     ) -> Vec3:
+        if self.dimension == "end":
+            top_y = (
+                self.end_surface_height(
+                    0,
+                    0,
+                )
+                or END_BASE_HEIGHT
+            )
+
+            return Vec3(
+                0,
+                top_y + 1.5,
+                0,
+            )
+
         top_y = self.terrain_height(
             0,
             0,
@@ -940,6 +1066,42 @@ class World:
                     chunk_position
                 )
 
+    def activate_end_portal_frame(
+        self,
+        position: Vec3 | GridPos,
+    ) -> bool:
+        if isinstance(
+            position,
+            Vec3,
+        ):
+            key = self.key_from_vec(
+                position
+            )
+        else:
+            key = tuple(
+                int(value)
+                for value in position
+            )
+
+        if (
+            self.blocks.get(
+                key
+            )
+            != BlockType.END_PORTAL_FRAME
+        ):
+            return False
+
+        self._replace_block_type(
+            key,
+            BlockType.END_PORTAL_FRAME_ACTIVE,
+        )
+
+        self.rebuild_around_position(
+            key
+        )
+
+        return True
+
     def scoop_liquid(
         self,
         position: Vec3 | GridPos,
@@ -1172,6 +1334,73 @@ class World:
             destroy(
                 self.water_simulation
             )
+
+    def generate_end(
+        self,
+    ) -> None:
+        random.seed(
+            WORLD_SEED
+            + 991
+        )
+
+        radius = min(
+            END_ISLAND_RADIUS,
+            WORLD_HALF - 2,
+        )
+
+        for x in range(
+            -radius,
+            radius + 1,
+        ):
+            for z in range(
+                -radius,
+                radius + 1,
+            ):
+                surface_y = (
+                    self.end_surface_height(
+                        x,
+                        z,
+                    )
+                )
+
+                if surface_y is None:
+                    continue
+
+                distance = math.sqrt(
+                    x * x
+                    + z * z
+                )
+
+                thickness = max(
+                    END_MIN_THICKNESS,
+                    int(
+                        (
+                            END_ISLAND_RADIUS
+                            - distance
+                        )
+                        * END_EDGE_THICKNESS_SCALE
+                    )
+                    + END_MIN_THICKNESS,
+                )
+
+                bottom_y = max(
+                    1,
+                    surface_y
+                    - thickness,
+                )
+
+                for y in range(
+                    bottom_y,
+                    surface_y + 1,
+                ):
+                    self._store_block(
+                        (x, y, z),
+                        BlockType.END_STONE,
+                    )
+
+        print(
+            f"end blocks = {len(self.blocks)}"
+        )
 
     def generate(
         self,
@@ -2019,14 +2248,26 @@ class World:
                             face_index,
                         )
 
-        if self.dimension == "nether":
-            atlas = get_texture(
-                "nether_atlas.png"
-            )
-        else:
-            atlas = (
-                get_atlas_texture()
-            )
+        # The Nether deliberately reuses the exact same atlas as the
+        # Overworld. The Entity colour below provides the red/brown tint
+        # while preserving grass, dirt, logs, leaves, glass, planks, etc.
+        atlas = (
+            get_atlas_texture()
+        )
+
+        block_tint = (
+            NETHER_BLOCK_TINT
+            if self.dimension
+            == "nether"
+            else color.white
+        )
+
+        transparent_tint = (
+            NETHER_TRANSPARENT_TINT
+            if self.dimension
+            == "nether"
+            else color.white
+        )
 
         chunk_render = (
             ChunkRender()
@@ -2049,7 +2290,7 @@ class World:
                 model=opaque_mesh,
                 texture=atlas,
                 position=chunk_origin,
-                color=color.white,
+                color=block_tint,
             )
 
         transparent_mesh = (
@@ -2063,7 +2304,7 @@ class World:
                 model=transparent_mesh,
                 texture=atlas,
                 position=chunk_origin,
-                color=color.white,
+                color=transparent_tint,
                 double_sided=True,
             )
 
@@ -2078,19 +2319,21 @@ class World:
                 FlowingWaterEntity(
                     model=water_mesh,
                     texture=get_texture(
-                        "nether_all.png"
-                        if self.dimension
-                        == "nether"
-                        else SPECIAL_BLOCK_TEXTURES[
+                        SPECIAL_BLOCK_TEXTURES[
                             "WATER"
                         ]
                     ),
                     position=chunk_origin,
-                    color=color.rgba32(
-                        255,
-                        255,
-                        255,
-                        205,
+                    color=(
+                        NETHER_WATER_TINT
+                        if self.dimension
+                        == "nether"
+                        else color.rgba32(
+                            255,
+                            255,
+                            255,
+                            205,
+                        )
                     ),
                     double_sided=True,
                 )
@@ -2107,19 +2350,21 @@ class World:
                 FlowingLavaEntity(
                     model=lava_mesh,
                     texture=get_texture(
-                        "nether_all.png"
-                        if self.dimension
-                        == "nether"
-                        else SPECIAL_BLOCK_TEXTURES[
+                        SPECIAL_BLOCK_TEXTURES[
                             "LAVA"
                         ]
                     ),
                     position=chunk_origin,
-                    color=color.rgba32(
-                        255,
-                        255,
-                        255,
-                        235,
+                    color=(
+                        NETHER_LAVA_TINT
+                        if self.dimension
+                        == "nether"
+                        else color.rgba32(
+                            255,
+                            255,
+                            255,
+                            235,
+                        )
                     ),
                     double_sided=True,
                 )
@@ -2135,15 +2380,17 @@ class World:
             chunk_render.obsidian = Entity(
                 model=obsidian_mesh,
                 texture=get_texture(
-                    "nether_all.png"
-                    if self.dimension
-                    == "nether"
-                    else SPECIAL_BLOCK_TEXTURES[
+                    SPECIAL_BLOCK_TEXTURES[
                         "OBSIDIAN"
                     ]
                 ),
                 position=chunk_origin,
-                color=color.white,
+                color=(
+                    NETHER_OBSIDIAN_TINT
+                    if self.dimension
+                    == "nether"
+                    else color.white
+                ),
             )
 
         collision_mesh = (

@@ -317,6 +317,9 @@ class MathcraftPlayer(FirstPersonController):
             return
 
         if key == "right mouse down":
+            if self.try_activate_end_portal_frame():
+                return
+
             if self.try_use_selected_item():
                 return
 
@@ -369,6 +372,33 @@ class MathcraftPlayer(FirstPersonController):
     # =========================================================
     # WOODEN BUCKET
     # =========================================================
+
+    def try_activate_end_portal_frame(
+        self,
+    ) -> bool:
+        block_position, _target = (
+            self._target_blocks()
+        )
+
+        if block_position is None:
+            return False
+
+        block_type = self.world.get_block(
+            block_position
+        )
+
+        if block_type not in (
+            BlockType.END_PORTAL_FRAME,
+            BlockType.END_PORTAL_FRAME_ACTIVE,
+        ):
+            return False
+
+        return (
+            self.game.dimension_manager
+            .activate_end_portal_frame(
+                block_position
+            )
+        )
 
     def try_use_selected_item(
         self,
@@ -637,14 +667,34 @@ class MathcraftPlayer(FirstPersonController):
             block_type
         ]
 
+        if (
+            block_type
+            == BlockType.END_PORTAL_FRAME_ACTIVE
+            and self.game.dimension_manager
+            .is_protected_end_return_frame(
+                block_position
+            )
+        ):
+            self.game.ui.set_message(
+                "The End return portal cannot be mined."
+            )
+            return
+
         if not definition.breakable:
             self.game.ui.set_message(
                 "That block cannot be mined."
             )
             return
 
+        drop_block_type = (
+            BlockType.END_PORTAL_FRAME
+            if block_type
+            == BlockType.END_PORTAL_FRAME_ACTIVE
+            else block_type
+        )
+
         if not self.game.inventory.can_add(
-            block_type,
+            drop_block_type,
             1,
         ):
             self.game.ui.set_message(
@@ -669,8 +719,13 @@ class MathcraftPlayer(FirstPersonController):
             self.game.ui.update_hud()
             return
 
+        if block_type == BlockType.END_PORTAL_FRAME_ACTIVE:
+            self.game.dimension_manager.handle_end_frame_removed(
+                block_position
+            )
+
         self.game.inventory.add(
-            block_type,
+            drop_block_type,
             1,
         )
 
@@ -1131,181 +1186,6 @@ class MathcraftPlayer(FirstPersonController):
     def jump(self) -> None:
         super().jump()
 
-    # =========================================================
-    # JOYSTICK / CONTROLLER INPUT
-    # =========================================================
-
-    def _inject_left_stick_into_movement(
-        self,
-    ):
-        """
-        FirstPersonController already knows how to perform movement,
-        gravity and collision using WASD.
-
-        For a controller, temporarily map the left analog stick onto those
-        four movement values while super().update() runs, then restore the
-        real keyboard values immediately afterwards.
-        """
-        joysticks = getattr(
-            self.game.ui,
-            "joysticks",
-            None,
-        )
-
-        if joysticks is None:
-            return None
-
-        move = (
-            joysticks
-            .gamepad_move_vector()
-        )
-
-        if (
-            abs(
-                move.x
-            ) < 0.001
-            and abs(
-                move.y
-            ) < 0.001
-        ):
-            return None
-
-        original = {
-            "w":
-                held_keys[
-                    "w"
-                ],
-
-            "a":
-                held_keys[
-                    "a"
-                ],
-
-            "s":
-                held_keys[
-                    "s"
-                ],
-
-            "d":
-                held_keys[
-                    "d"
-                ],
-        }
-
-        held_keys[
-            "d"
-        ] = max(
-            original[
-                "d"
-            ],
-            max(
-                0.0,
-                move.x,
-            ),
-        )
-
-        held_keys[
-            "a"
-        ] = max(
-            original[
-                "a"
-            ],
-            max(
-                0.0,
-                -move.x,
-            ),
-        )
-
-        held_keys[
-            "w"
-        ] = max(
-            original[
-                "w"
-            ],
-            max(
-                0.0,
-                move.y,
-            ),
-        )
-
-        held_keys[
-            "s"
-        ] = max(
-            original[
-                "s"
-            ],
-            max(
-                0.0,
-                -move.y,
-            ),
-        )
-
-        return original
-
-    @staticmethod
-    def _restore_movement_keys(
-        original,
-    ) -> None:
-        if original is None:
-            return
-
-        for key, value in (
-            original.items()
-        ):
-            held_keys[
-                key
-            ] = value
-
-    def _update_right_stick_look(
-        self,
-    ) -> None:
-        joysticks = getattr(
-            self.game.ui,
-            "joysticks",
-            None,
-        )
-
-        if joysticks is None:
-            return
-
-        look = (
-            joysticks
-            .look_control_vector()
-        )
-
-        if (
-            abs(
-                look.x
-            ) < 0.001
-            and abs(
-                look.y
-            ) < 0.001
-        ):
-            return
-
-        horizontal_speed = 125.0
-        vertical_speed = 95.0
-
-        self.rotation_y += (
-            look.x
-            * horizontal_speed
-            * time.dt
-        )
-
-        self.camera_pivot.rotation_x -= (
-            look.y
-            * vertical_speed
-            * time.dt
-        )
-
-        self.camera_pivot.rotation_x = max(
-            -90.0,
-            min(
-                90.0,
-                self.camera_pivot.rotation_x,
-            ),
-        )
-
     def update(self) -> None:
         if not self.enabled:
             return
@@ -1337,19 +1217,7 @@ class MathcraftPlayer(FirstPersonController):
                 self.base_gravity
             )
 
-        movement_keys = (
-            self._inject_left_stick_into_movement()
-        )
-
-        try:
-            super().update()
-
-        finally:
-            self._restore_movement_keys(
-                movement_keys
-            )
-
-        self._update_right_stick_look()
+        super().update()
 
         if self.fly_mode:
             self.grounded = False
