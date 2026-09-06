@@ -191,6 +191,28 @@ CRAFTING_RECIPES = (
         "count": 1,
     },
 
+    # Glass recipe:
+    #
+    #     dirt   dirt
+    #     dirt   dirt
+    #
+    # Four dirt blocks make four glass blocks.
+    {
+        "kind": "pattern",
+
+        "pattern": (
+            BlockType.DIRT,
+            BlockType.DIRT,
+            BlockType.DIRT,
+            BlockType.DIRT,
+        ),
+
+        "output":
+            BlockType.GLASS,
+
+        "count": 4,
+    },
+
     # Bed recipe:
     #
     #     wool   wool
