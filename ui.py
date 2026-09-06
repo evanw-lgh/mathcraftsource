@@ -296,6 +296,11 @@ class GameUI:
             enabled=False,
         )
 
+        self.loading_root = Entity(
+            parent=camera.ui,
+            enabled=False,
+        )
+
         self.world_list_page = 0
         self.world_row_entities = []
 
@@ -304,6 +309,7 @@ class GameUI:
         self.world_create_fields = {}
         self.world_create_dynamic = []
 
+        self._build_loading_screen()
         self._build_menu()
         self._build_world_select()
         self._build_world_create()
@@ -321,6 +327,167 @@ class GameUI:
                 self
             )
         )
+
+    # =========================================================
+    # LOADING SCREEN
+    # =========================================================
+
+    def _build_loading_screen(
+        self,
+    ) -> None:
+        self.loading_background = Entity(
+            parent=self.loading_root,
+            model="quad",
+            scale=(
+                2.0,
+                1.0,
+            ),
+            color=color.rgb32(
+                10,
+                16,
+                27,
+            ),
+        )
+
+        self.loading_title = Text(
+            parent=self.loading_root,
+            text="MATHCRAFT",
+            y=0.12,
+            origin=(
+                0,
+                0,
+            ),
+            scale=2.4,
+            color=color.white,
+        )
+
+        self.loading_status = Text(
+            parent=self.loading_root,
+            text="Loading world...",
+            y=0.015,
+            origin=(
+                0,
+                0,
+            ),
+            scale=1.05,
+            color=color.rgb32(
+                220,
+                230,
+                240,
+            ),
+        )
+
+        self.loading_bar_background = Entity(
+            parent=self.loading_root,
+            model="quad",
+            y=-0.075,
+            scale=(
+                0.72,
+                0.026,
+            ),
+            color=color.rgba32(
+                45,
+                55,
+                70,
+                255,
+            ),
+        )
+
+        self.loading_bar_fill = Entity(
+            parent=self.loading_root,
+            model="quad",
+            x=-0.36,
+            y=-0.075,
+            origin=(
+                -0.5,
+                0,
+            ),
+            scale=(
+                0.0,
+                0.020,
+            ),
+            color=color.azure,
+        )
+
+        self.loading_percent = Text(
+            parent=self.loading_root,
+            text="0%",
+            y=-0.125,
+            origin=(
+                0,
+                0,
+            ),
+            scale=0.80,
+            color=color.rgb32(
+                190,
+                205,
+                220,
+            ),
+        )
+
+    def show_loading_screen(
+        self,
+        status: str = "Loading world...",
+        progress: float = 0.0,
+    ) -> None:
+        # Hide every normal screen so the loading screen is guaranteed
+        # to be the only UI visible while a world is being constructed.
+        self.menu_root.enabled = False
+        self.settings_root.enabled = False
+        self.world_select_root.enabled = False
+        self.world_create_root.enabled = False
+        self.hud_root.enabled = False
+        self.question_root.enabled = False
+        self.pause_root.enabled = False
+        self.inventory_screen_root.enabled = False
+
+        self.question_open = False
+        self.pause_open = False
+        self.inventory_open = False
+
+        mouse.locked = False
+
+        self.loading_root.enabled = True
+        self.set_loading_status(
+            status,
+            progress,
+        )
+
+    def set_loading_status(
+        self,
+        status: str,
+        progress: float | None = None,
+    ) -> None:
+        self.loading_status.text = str(
+            status
+        )
+
+        if progress is None:
+            return
+
+        progress = max(
+            0.0,
+            min(
+                1.0,
+                float(
+                    progress
+                ),
+            ),
+        )
+
+        self.loading_bar_fill.scale_x = (
+            0.72
+            * progress
+        )
+
+        self.loading_percent.text = (
+            f"{int(round(progress * 100.0))}%"
+        )
+
+    def hide_loading_screen(
+        self,
+    ) -> None:
+        self.loading_root.enabled = False
 
     # =========================================================
     # GENERIC UI HELPERS
@@ -1117,10 +1284,23 @@ class GameUI:
     # =========================================================
 
     def _build_hud(self):
+        # Day/night clock.
+        #
+        # day_night.py calls GameUI.set_world_time(), so this Text must
+        # exist before a saved world can be loaded.
+        self.time_text = Text(
+            parent=self.hud_root,
+            text="08:00",
+            x=-0.76,
+            y=0.47,
+            scale=1.00,
+            color=color.white,
+        )
+
         self.tokens_text = Text(
             parent=self.hud_root,
             x=-0.76,
-            y=0.45,
+            y=0.42,
             scale=1.10,
             color=color.white,
         )
@@ -1128,7 +1308,7 @@ class GameUI:
         self.block_text = Text(
             parent=self.hud_root,
             x=-0.76,
-            y=0.40,
+            y=0.37,
             scale=0.88,
             color=color.white,
         )
@@ -1136,7 +1316,7 @@ class GameUI:
         self.difficulty_text = Text(
             parent=self.hud_root,
             x=-0.76,
-            y=0.35,
+            y=0.32,
             scale=0.88,
             color=color.white,
         )
@@ -1144,7 +1324,7 @@ class GameUI:
         self.quest_text = Text(
             parent=self.hud_root,
             x=-0.76,
-            y=0.29,
+            y=0.26,
             scale=0.70,
             color=color.white,
         )
@@ -1174,6 +1354,7 @@ class GameUI:
         )
 
     def show_game_hud(self):
+        self.loading_root.enabled = False
         self.menu_root.enabled = False
         self.settings_root.enabled = False
         self.world_select_root.enabled = False
@@ -1191,6 +1372,7 @@ class GameUI:
         self.update_hud()
 
     def show_main_menu(self):
+        self.loading_root.enabled = False
         self.hud_root.enabled = False
         self.settings_root.enabled = False
         self.world_select_root.enabled = False
@@ -1207,6 +1389,15 @@ class GameUI:
         self.current_question = None
 
         mouse.locked = False
+
+    def set_world_time(
+        self,
+        time_text: str,
+    ) -> None:
+        """Update the top-left 24-hour world clock."""
+        self.time_text.text = str(
+            time_text
+        )
 
     def update_hud(self):
         self.tokens_text.text = (

@@ -299,129 +299,331 @@ class MathcraftGame:
             destroy(self.sky)
             self.sky = None
 
+    def _render_loading_frame(
+        self,
+    ) -> None:
+        """Force Panda3D to draw UI even while world loading is synchronous."""
+        base = getattr(
+            application,
+            "base",
+            None,
+        )
+
+        graphics_engine = getattr(
+            base,
+            "graphicsEngine",
+            None,
+        )
+
+        if graphics_engine is None:
+            return
+
+        # Two frames makes freshly changed Text/Entity state reliably visible
+        # before a long World(...) build blocks the normal task loop.
+        graphics_engine.renderFrame()
+        graphics_engine.renderFrame()
+
+    def _set_loading_status(
+        self,
+        status: str,
+        progress: float,
+    ) -> None:
+        self.ui.set_loading_status(
+            status,
+            progress,
+        )
+
+        self._render_loading_frame()
+
     def load_saved_world(self, save_id: str) -> None:
-        if self.current_save_id is not None and self.world is not None:
-            self.save_current_world()
-
-        self._unload_current_world()
-
-        metadata = load_world_save(save_id)
-        self.world_settings = WorldSettings.from_dict(metadata.get("settings"))
-        self.world_settings.normalise()
-
-        apply_world_settings(
-            self.world_settings
+        self.ui.show_loading_screen(
+            "Preparing world...",
+            0.02,
         )
 
-        apply_hostile_mob_settings(
-            self.world_settings
-        )
+        self._render_loading_frame()
 
-        apply_peaceful_mob_settings(
-            self.world_settings
-        )
-
-        self._apply_world_display_settings()
-
-        progress = metadata.get("progress", {})
-        self.tokens = int(progress.get("tokens", self.world_settings.starting_tokens))
-
-        self.inventory = Inventory()
-        self.inventory.restore(
-            progress.get(
-                "inventory"
-            )
-        )
-
-        self.quest = StarterQuest(self.world_settings)
-        self.quest.restore_state(progress.get("quest"))
-
-        self.ui.math_streak = int(progress.get("math_streak", 0))
-        self.ui.reset_streak_visual_only()
-
-        raw_state = load_world_state(
-            save_id
-        )
-
-        (
-            state,
-            dimension,
-        ) = (
-            self.dimension_manager
-            .load_save_state(
-                raw_state
-            )
-        )
-
-        self.current_dimension = (
-            dimension
-        )
-
-        self.world = World(
-            initial_state=state,
-            dimension=dimension,
-        )
-
-        self.sky = Sky()
-
-        self.day_night.configure(
-            self.world_settings,
-            progress.get(
-                "world_time_minutes"
-            ),
-        )
-
-        spawn_position = self.world.get_spawn_position()
-        player_position = progress.get("player_position")
-
-        if (
-            isinstance(player_position, list)
-            and len(player_position) == 3
-        ):
-            try:
-                spawn_position = Vec3(
-                    float(player_position[0]),
-                    float(player_position[1]),
-                    float(player_position[2]),
+        try:
+            if (
+                self.current_save_id is not None
+                and self.world is not None
+            ):
+                self._set_loading_status(
+                    "Saving current world...",
+                    0.06,
                 )
-            except (TypeError, ValueError):
-                spawn_position = self.world.get_spawn_position()
 
-        self.player = MathcraftPlayer(
-            self,
-            self.world,
-            position=spawn_position,
-        )
+                self.save_current_world()
 
-        self.player.restore_survival(
-            progress.get(
-                "health",
-                self.world_settings.max_health,
-            ),
-            progress.get(
-                "oxygen",
-                self.world_settings.max_oxygen,
-            ),
-        )
+            self._set_loading_status(
+                "Clearing previous world...",
+                0.10,
+            )
 
-        self.current_save_id = save_id
-        self.current_world_name = metadata.get("name", save_id)
-        self.in_game = True
+            self._unload_current_world()
 
-        self.player.enabled = True
-        self.player.set_first_person()
+            self._set_loading_status(
+                "Reading world save...",
+                0.16,
+            )
 
-        self.dimension_manager._rebuild_runtime_effects()
+            metadata = load_world_save(
+                save_id
+            )
 
-        self.ui.show_game_hud()
-        self.apply_settings()
+            self.world_settings = (
+                WorldSettings.from_dict(
+                    metadata.get(
+                        "settings"
+                    )
+                )
+            )
 
-        self.day_night.apply_visuals()
+            self.world_settings.normalise()
 
-        mouse.locked = True
+            self._set_loading_status(
+                "Applying world settings...",
+                0.22,
+            )
 
-        metadata["last_played"] = __import__("datetime").datetime.now().astimezone().isoformat(timespec="seconds")
-        write_world_metadata(save_id, metadata)
+            apply_world_settings(
+                self.world_settings
+            )
+
+            apply_hostile_mob_settings(
+                self.world_settings
+            )
+
+            apply_peaceful_mob_settings(
+                self.world_settings
+            )
+
+            self._apply_world_display_settings()
+
+            self._set_loading_status(
+                "Loading inventory and progress...",
+                0.30,
+            )
+
+            progress = metadata.get(
+                "progress",
+                {},
+            )
+
+            self.tokens = int(
+                progress.get(
+                    "tokens",
+                    self.world_settings.starting_tokens,
+                )
+            )
+
+            self.inventory = Inventory()
+
+            self.inventory.restore(
+                progress.get(
+                    "inventory"
+                )
+            )
+
+            self.quest = StarterQuest(
+                self.world_settings
+            )
+
+            self.quest.restore_state(
+                progress.get(
+                    "quest"
+                )
+            )
+
+            self.ui.math_streak = int(
+                progress.get(
+                    "math_streak",
+                    0,
+                )
+            )
+
+            self.ui.reset_streak_visual_only()
+
+            self._set_loading_status(
+                "Loading dimension data...",
+                0.38,
+            )
+
+            raw_state = load_world_state(
+                save_id
+            )
+
+            (
+                state,
+                dimension,
+            ) = (
+                self.dimension_manager
+                .load_save_state(
+                    raw_state
+                )
+            )
+
+            self.current_dimension = (
+                dimension
+            )
+
+            # World construction/generation is the expensive part.
+            self._set_loading_status(
+                "Building terrain and chunks...",
+                0.48,
+            )
+
+            self.world = World(
+                initial_state=state,
+                dimension=dimension,
+            )
+
+            self._set_loading_status(
+                "Creating sky and world clock...",
+                0.76,
+            )
+
+            self.sky = Sky()
+
+            self.day_night.configure(
+                self.world_settings,
+                progress.get(
+                    "world_time_minutes"
+                ),
+            )
+
+            self._set_loading_status(
+                "Finding spawn position...",
+                0.82,
+            )
+
+            spawn_position = (
+                self.world
+                .get_spawn_position()
+            )
+
+            player_position = progress.get(
+                "player_position"
+            )
+
+            if (
+                isinstance(
+                    player_position,
+                    list,
+                )
+                and len(
+                    player_position
+                )
+                == 3
+            ):
+                try:
+                    spawn_position = Vec3(
+                        float(
+                            player_position[0]
+                        ),
+                        float(
+                            player_position[1]
+                        ),
+                        float(
+                            player_position[2]
+                        ),
+                    )
+                except (
+                    TypeError,
+                    ValueError,
+                ):
+                    spawn_position = (
+                        self.world
+                        .get_spawn_position()
+                    )
+
+            self._set_loading_status(
+                "Spawning player...",
+                0.87,
+            )
+
+            self.player = MathcraftPlayer(
+                self,
+                self.world,
+                position=spawn_position,
+            )
+
+            self.player.restore_survival(
+                progress.get(
+                    "health",
+                    self.world_settings.max_health,
+                ),
+                progress.get(
+                    "oxygen",
+                    self.world_settings.max_oxygen,
+                ),
+            )
+
+            self.current_save_id = (
+                save_id
+            )
+
+            self.current_world_name = (
+                metadata.get(
+                    "name",
+                    save_id,
+                )
+            )
+
+            self.in_game = True
+
+            self.player.enabled = True
+
+            self.player.set_first_person()
+
+            self._set_loading_status(
+                "Building portals and dimension effects...",
+                0.92,
+            )
+
+            self.dimension_manager._rebuild_runtime_effects()
+
+            self._set_loading_status(
+                "Finishing world...",
+                0.97,
+            )
+
+            self.ui.show_game_hud()
+
+            self.apply_settings()
+
+            self.day_night.apply_visuals()
+
+            mouse.locked = True
+
+            metadata[
+                "last_played"
+            ] = (
+                __import__(
+                    "datetime"
+                )
+                .datetime
+                .now()
+                .astimezone()
+                .isoformat(
+                    timespec="seconds"
+                )
+            )
+
+            write_world_metadata(
+                save_id,
+                metadata,
+            )
+
+            # The loading root is already hidden by show_game_hud(), but keep
+            # this explicit so future UI changes cannot leave it on-screen.
+            self.ui.hide_loading_screen()
+
+        except Exception:
+            # Do not trap the user behind the loading overlay if anything
+            # unexpected fails during loading.
+            self.ui.hide_loading_screen()
+            raise
 
     def save_current_world(self) -> None:
         if self.current_save_id is None or self.world is None:
