@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "id": "test",
-  "name": "test",
-  "created_at": "2026-08-31T19:36:38+01:00",
-  "last_played": "2026-08-31T19:40:04+01:00",
+  "id": "New_World",
+  "name": "New World",
+  "created_at": "2026-09-06T11:11:49+01:00",
+  "last_played": "2026-09-06T11:12:13+01:00",
   "settings": {
     "world_size": 200,
     "chunk_size": 16,
@@ -92,13 +92,13 @@
     "zombie_right_leg_texture": "missing.png"
   },
   "progress": {
-    "tokens": 4,
+    "tokens": 0,
     "player_position": [
-      21.59462547302246,
-      5.5,
-      0.9599732756614685
+      -2.8184468746185303,
+      1.5,
+      24.81158447265625
     ],
-    "math_streak": 0,
+    "math_streak": 1,
     "quest": {
       "first_equation": {
         "title": "The First Equation",
@@ -106,8 +106,8 @@
         "blocks_mined_needed": 5,
         "blocks_placed_needed": 3,
         "reward": 20,
-        "questions_answered": 0,
-        "blocks_mined": 1,
+        "questions_answered": 1,
+        "blocks_mined": 6,
         "blocks_placed": 0,
         "completed": false,
         "claimed": false
@@ -129,12 +129,12 @@
         {
           "kind": "block",
           "value": "GRASS_BLOCK",
-          "count": 1
+          "count": 6
         },
         {
-          "kind": "item",
-          "value": "ROTTEN_FLESH",
-          "count": 9
+          "kind": null,
+          "value": null,
+          "count": 0
         },
         {
           "kind": null,
@@ -335,8 +335,8 @@
         "count": 0
       }
     },
-    "health": 4.5,
+    "health": 10.0,
     "oxygen": 10,
-    "world_time_minutes": 527.0806183000014
+    "world_time_minutes": 503.6847481000001
   }
 }
